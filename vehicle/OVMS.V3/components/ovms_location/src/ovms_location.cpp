@@ -439,7 +439,10 @@ void location_status(int verbosity, OvmsWriter* writer, OvmsCommand* cmd, int ar
   writer->printf("(%sGPS lock", MyLocations.m_gpslock ? "" : "without ");
   n = StandardMetrics.ms_v_pos_satcount->AsInt();
   if (n > 0)
-    writer->printf(", %d satellite%s", n, n == 1 ? "" : "s");
+    {
+    writer->printf(", %d satellite%s, %s", n, n == 1 ? "" : "s",
+      MyLocations.m_gpsgood ? "reliable" : "unreliable");
+    }
   writer->puts(")");
 
   if ((MyLocations.m_park_latitude != 0) || (MyLocations.m_park_longitude != 0))
@@ -618,12 +621,15 @@ OvmsLocations::OvmsLocations()
 
   m_ready = false;
   m_gpslock = false;
+  m_gpssq = 0;
+  m_gpsgood = false;
   m_latitude = 0;
   m_longitude = 0;
   m_park_latitude = 0;
   m_park_longitude = 0;
   m_park_distance = 0;
   m_park_invalid = true;
+  m_last_alarm = 0;
 
   // Register our commands
   OvmsCommand* cmd_location = MyCommandApp.RegisterCommand("location","LOCATION framework", location_status, "", 0, 0, false);
@@ -670,8 +676,8 @@ OvmsLocations::OvmsLocations()
   using std::placeholders::_1;
   using std::placeholders::_2;
   MyMetrics.RegisterListener(TAG, MS_V_POS_GPSLOCK, std::bind(&OvmsLocations::UpdatedGpsLock, this, _1));
-  MyMetrics.RegisterListener(TAG, MS_V_POS_LATITUDE, std::bind(&OvmsLocations::UpdatedLatitude, this, _1));
-  MyMetrics.RegisterListener(TAG, MS_V_POS_LONGITUDE, std::bind(&OvmsLocations::UpdatedLongitude, this, _1));
+  MyMetrics.RegisterListener(TAG, MS_V_POS_GPSSQ, std::bind(&OvmsLocations::UpdatedGpsSQ, this, _1));
+  MyMetrics.RegisterListener(TAG, MS_V_POS_GPSTIME, std::bind(&OvmsLocations::UpdatedPosition, this, _1));
   MyMetrics.RegisterListener(TAG, MS_V_ENV_ON, std::bind(&OvmsLocations::UpdatedVehicleOn, this, _1));
   MyEvents.RegisterEvent(TAG,"config.mounted", std::bind(&OvmsLocations::UpdatedConfig, this, _1, _2));
   MyEvents.RegisterEvent(TAG,"config.changed", std::bind(&OvmsLocations::UpdatedConfig, this, _1, _2));
@@ -695,12 +701,6 @@ void OvmsLocations::UpdatedGpsLock(OvmsMetric* metric)
   m_gpslock = m->AsBool();
   if (m_gpslock)
     {
-    if (!m_ready)
-      {
-      UpdateParkPosition();
-      m_ready = true;
-      }
-    UpdateLocations();
     MyEvents.SignalEvent("gps.lock.acquired", NULL);
     }
   else
@@ -709,22 +709,36 @@ void OvmsLocations::UpdatedGpsLock(OvmsMetric* metric)
     }
   }
 
-void OvmsLocations::UpdatedLatitude(OvmsMetric* metric)
+void OvmsLocations::UpdatedGpsSQ(OvmsMetric* metric)
   {
-  OvmsMetricFloat* m = (OvmsMetricFloat*)metric;
-  m_latitude = m->AsFloat();
-  if (m_gpslock)
+  m_gpssq = StdMetrics.ms_v_pos_gpssq->AsInt();
+  int level_good = MyConfig.GetParamValueInt("vehicle", "gps.sq.good", 60);
+  int level_bad  = MyConfig.GetParamValueInt("vehicle", "gps.sq.bad",  40);
+  if (level_bad >= level_good) level_bad = level_good - 1;
+
+  if (!m_gpsgood && m_gpssq >= level_good)
     {
+    m_gpsgood = true;
+    if (!m_ready)
+      {
+      UpdateParkPosition();
+      m_ready = true;
+      }
     UpdateLocations();
-    CheckTheft();
+    MyEvents.SignalEvent("gps.sq.good", NULL);
+    }
+  else if (m_gpsgood && m_gpssq <= level_bad)
+    {
+    m_gpsgood = false;
+    MyEvents.SignalEvent("gps.sq.bad", NULL);
     }
   }
 
-void OvmsLocations::UpdatedLongitude(OvmsMetric* metric)
+void OvmsLocations::UpdatedPosition(OvmsMetric* metric)
   {
-  OvmsMetricFloat* m = (OvmsMetricFloat*)metric;
-  m_longitude = m->AsFloat();
-  if (m_gpslock)
+  m_latitude = StdMetrics.ms_v_pos_latitude->AsFloat();
+  m_longitude = StdMetrics.ms_v_pos_longitude->AsFloat();
+  if (m_gpsgood)
     {
     UpdateLocations();
     CheckTheft();
@@ -745,18 +759,20 @@ void OvmsLocations::UpdateParkPosition()
     m_park_longitude = 0;
     m_park_distance = 0;
     m_park_invalid = true;
+    m_last_alarm = 0;
     ESP_LOGI(TAG, "UpdateParkPosition: vehicle is driving");
     }
   else
     {
     m_park_latitude = m_latitude;
     m_park_longitude = m_longitude;
-    m_park_invalid = (!m_gpslock || StdMetrics.ms_v_pos_latitude->IsStale() || StdMetrics.ms_v_pos_longitude->IsStale());
-    ESP_LOGI(TAG, "UpdateParkPosition: vehicle is parking @%0.6f,%0.6f gpslock=%d satcount=%d hdop=%.1f invalid=%d",
+    m_park_invalid = (!m_gpsgood || StdMetrics.ms_v_pos_latitude->IsStale() || StdMetrics.ms_v_pos_longitude->IsStale());
+    m_last_alarm = 0;
+    ESP_LOGI(TAG, "UpdateParkPosition: vehicle is parking @%0.6f,%0.6f gpslock=%d satcount=%d hdop=%.1f sq=%d invalid=%d",
       m_park_latitude, m_park_longitude, m_gpslock,
       StdMetrics.ms_v_pos_satcount->AsInt(),
       StdMetrics.ms_v_pos_gpshdop->AsFloat(),
-      m_park_invalid);
+      m_gpssq, m_park_invalid);
     }
   }
 
@@ -810,7 +826,7 @@ void OvmsLocations::ReloadMap()
       }
     }
 
-  if (m_gpslock) UpdateLocations();
+  if (m_gpsgood) UpdateLocations();
   }
 
 void OvmsLocations::UpdateLocations()
@@ -846,9 +862,15 @@ void OvmsLocations::CheckTheft()
   if (last_dist != round(dist/10))
     {
     last_dist = round(dist/10);
-    ESP_LOGV(TAG, "CheckTheft: vehicle parked @%0.6f,%0.6f now @%0.6f,%0.6f dist=%.0f smoothed=%.0f alarm=%d",
-      m_park_latitude, m_park_longitude, m_latitude, m_longitude, dist, m_park_distance, alarm);
+    ESP_LOGV(TAG, "CheckTheft: vehicle parked @%0.6f,%0.6f now @%0.6f,%0.6f dist=%.0f smoothed=%.0f alarm=%d"
+      " gpsmode=%s satcount=%d hdop=%.1f gpsspeed=%.1f",
+      m_park_latitude, m_park_longitude, m_latitude, m_longitude, dist, m_park_distance, alarm,
+      StdMetrics.ms_v_pos_gpsmode->AsString().c_str(),
+      StdMetrics.ms_v_pos_satcount->AsInt(),
+      StdMetrics.ms_v_pos_gpshdop->AsFloat(),
+      StdMetrics.ms_v_pos_gpsspeed->AsFloat());
     }
+
   // Suppress false theft alerts due to a suspected SIMCOM GPS bug,
   // the reported location goes from: A,B -> A,B -> 0,B -> 0,A -> A,B -> A,B
   // Also seen: A,B -> A,B -> A,0 -> A,B -> A,B
@@ -861,7 +883,9 @@ void OvmsLocations::CheckTheft()
     return;
     }
 
-  if (m_park_distance > alarm)
+  int alarm_interval = MyConfig.GetParamValueInt("vehicle", "flatbed.alarminterval", 15) * 60;
+  if ((m_park_distance > alarm) &&
+      (m_last_alarm == 0 || (alarm_interval > 0 && monotonictime > m_last_alarm + alarm_interval)))
     {
     MyNotify.NotifyStringf("alert", "flatbed.moved",
       "Vehicle is being transported while parked - possible theft/flatbed (@%0.6f,%0.6f)",
@@ -873,10 +897,8 @@ void OvmsLocations::CheckTheft()
       StdMetrics.ms_v_pos_satcount->AsInt(),
       StdMetrics.ms_v_pos_gpshdop->AsFloat(),
       StdMetrics.ms_v_pos_gpsspeed->AsFloat());
-    // inhibit further alerts:
-    m_park_latitude = 0;
-    m_park_longitude = 0;
-    m_park_invalid = true;
+    // inhibit further alerts for configured interval:
+    m_last_alarm = monotonictime;
     }
   }
 

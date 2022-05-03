@@ -1,6 +1,23 @@
 Open Vehicle Monitor System v3 - Change log
 
 ????-??-?? ???  ???????  OTA release
+- Toyota RAV4 EV: Initial support added. Only the Tesla bus is decoded and just listening so far.
+- Location: configurable flatbed movement alarm repetition
+  New configs:
+    [vehicle] flatbed.alarminterval     -- in minutes, default 15, 0 = single alarm
+- GPS: added normalized signal quality level, added web UI live status info
+  New metrics:
+    v.p.gpssq                           -- GPS signal quality [%] (<30 unusable, >50 good, >80 excellent)
+    v.p.gpstime                         -- Time (UTC) of GPS coordinates [Seconds]
+- Location: flatbed movement alarm only with reliable positioning
+  New configs:
+    [vehicle] gps.sq.good               -- SQ level for location state "reliable", default 60
+    [vehicle] gps.sq.bad                -- SQ level for location state "unreliable", default 40
+  New events:
+    gps.sq.good                         -- GPS position is now reliable
+    gps.sq.bad                          -- GPS position is now unreliable
+
+2022-03-07 MWJ  3.3.002  OTA release
 - Maxus eDeliver3: Updated speed PID
 - Bolt EV: Add early Bolt EV support
 - Maxus eDeliver3: Add CCS Charging
@@ -35,6 +52,7 @@ Open Vehicle Monitor System v3 - Change log
     xnl.cc.rqinprogress (Indicates the period betwen arrival of climate control action message and climate control activation.)
  - Wakeup command now charges 12V battery if connected to EVSE
  - 2011-2012 LEAF now reads AC voltage from grid
+ - Fix to watchdog timer for modem driver without GPS enabled
 
 2021-11-22 MWJ  3.2.018  OTA release
 - Vehicle: added optional automatic trip report generation

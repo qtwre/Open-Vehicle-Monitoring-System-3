@@ -96,12 +96,15 @@ class OvmsLocations
   public:
     bool m_ready;
     bool m_gpslock;
+    int m_gpssq;
+    bool m_gpsgood;
     float m_latitude;
     float m_longitude;
     float m_park_latitude;
     float m_park_longitude;
     float m_park_distance;
     bool m_park_invalid;
+    uint32_t m_last_alarm;
     LocationMap m_locations;
 
   public:
@@ -112,8 +115,8 @@ class OvmsLocations
 
   public:
     void UpdatedGpsLock(OvmsMetric* metric);
-    void UpdatedLatitude(OvmsMetric* metric);
-    void UpdatedLongitude(OvmsMetric* metric);
+    void UpdatedGpsSQ(OvmsMetric* metric);
+    void UpdatedPosition(OvmsMetric* metric);
     void UpdatedVehicleOn(OvmsMetric* metric);
     void UpdatedConfig(std::string event, void* data);
   };

@@ -1,0 +1,202 @@
+<!--
+  Toyota RAV4 EV Monitor; install as plugin
+-->
+
+<style>
+  .indicator > .label {
+    font-size: 150%;
+    line-height: 200%;
+    margin: 10px;
+    padding: 10px;
+    display: block;
+    border-radius: 50px;
+  }
+  .metric.number .label {
+    min-width: 8em;
+  }
+  .metric.number {
+    display: block;
+    float: none;
+    text-align: center;
+  }
+  .metric.text {
+    display: block;
+    float: none;
+    text-align: center;
+  }
+  </style>
+  
+  <div class="panel panel-primary">
+    <div class="panel-heading">Toyota RAV4 EV Monitor</div>
+    <div class="panel-body">
+      <div class="receiver" id="xr4mon-receiver">
+        <div class="row">
+          <div class="col-sm-6">
+            <h4>Cooling</h4>
+            <div class="metric number" data-metric="xr4.v.b.t.cltin" data-prec="1">
+              <span class="label">Battery Coolant Inlet Temp:</span>
+              <span class="value">?</span>
+              <span class="unit">deg C</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.b.t.cltout" data-prec="1">
+              <span class="label">Battery Coolant Outlet Temp:</span>
+              <span class="value">?</span>
+              <span class="unit">deg C</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.m.t.cltin" data-prec="1">
+              <span class="label">Motor Coolant Inlet Temp:</span>
+              <span class="value">?</span>
+              <span class="unit">deg C</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.b.p.one" data-prec="0">
+              <span class="label">Battery Pump #1:</span>
+              <span class="value">?</span>
+              <span class="unit">%</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.b.p.two" data-prec="0">
+              <span class="label">Battery Pump #2:</span>
+              <span class="value">?</span>
+              <span class="unit">%</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.m.pump" data-prec="0">
+              <span class="label">Motor Pump:</span>
+              <span class="value">?</span>
+              <span class="unit">%</span>
+            </div>
+            <h4>Battery</h4>
+            <div class="metric number" data-metric="v.b.soc" data-prec="1">
+              <span class="label">Battery SOC Min:</span>
+              <span class="value">?</span>
+              <span class="unit">%</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.b.en.avail" data-prec="1">
+              <span class="label">Battery Available Energy:</span>
+              <span class="value">?</span>
+              <span class="unit">kWh</span>
+            </div>
+            <div class="metric number" data-metric="v.b.voltage" data-prec="0">
+              <span class="label">Battery Pack Voltage:</span>
+              <span class="value">?</span>
+              <span class="unit">V</span>
+            </div>
+            <div class="metric number" data-metric="v.b.current" data-prec="1">
+              <span class="label">Battery Pack Current:</span>
+              <span class="value">?</span>
+              <span class="unit">A</span>
+            </div>
+            <div class="metric number" data-metric="v.b.power" data-prec="1">
+              <span class="label">Battery Pack Power:</span>
+              <span class="value">?</span>
+              <span class="unit">kW</span>
+            </div>
+            <div class="metric number" data-metric="v.b.temp" data-prec="1">
+              <span class="label">Battery Temperature:</span>
+              <span class="value">?</span>
+              <span class="unit">C</span>
+            </div>
+            <div class="metric number" data-metric="v.b.p.voltage.max" data-prec="3">
+              <span class="label">Max Cell Voltage:</span>
+              <span class="value">?</span>
+              <span class="unit">V</span>
+            </div>
+            <div class="metric number" data-metric="v.b.p.voltage.min" data-prec="3">
+              <span class="label">Min Cell Voltage:</span>
+              <span class="value">?</span>
+              <span class="unit">V</span>
+            </div>
+            <div class="metric number" data-metric="v.b.energy.used.total" data-prec="3">
+              <span class="label">Lifetime Battery Pack Discharge:</span>
+              <span class="value">?</span>
+              <span class="unit">kWh</span>
+            </div>
+            <div class="metric number" data-metric="v.c.kwh.grid.total" data-prec="3">
+              <span class="label">Lifetime Battery Pack Charge:</span>
+              <span class="value">?</span>
+              <span class="unit">kWh</span>
+            </div>
+            <h4>Charging</h4>
+            <div class="metric text" data-metric="v.c.state">
+              <span class="label">Charge State:</span>
+              <span class="value">?</span>
+            </div>
+            <div class="metric text" data-metric="v.c.type">
+              <span class="label">Charge Type:</span>
+              <span class="value">?</span>
+            </div>
+            <div class="metric number" data-metric="v.c.voltage" data-prec="0">
+              <span class="label">AC Line Voltage:</span>
+              <span class="value">?</span>
+              <span class="unit">V</span>
+            </div>
+            <div class="metric number" data-metric="v.c.current" data-prec="0">
+              <span class="label">AC Line Current:</span>
+              <span class="value">?</span>
+              <span class="unit">A</span>
+            </div>
+            <div class="metric number" data-metric="v.c.power" data-prec="0">
+              <span class="label">Charging Power:</span>
+              <span class="value">?</span>
+              <span class="unit">kW</span>
+            </div>
+            <div class="metric text" data-metric="v.c.pilot">
+              <span class="label">Pilot Present:</span>
+              <span class="value">?</span>
+            </div>
+            <div class="metric number" data-metric="xr4.v.c.pilot.current" data-prec="0">
+              <span class="label">Pilot Current:</span>
+              <span class="value">?</span>
+              <span class="unit">A</span>
+            </div>
+            <h4>DC-DC</h4>
+            <div class="metric number" data-metric="v.c.12v.voltage" data-prec="1">
+              <span class="label">DC-DC Output Voltage:</span>
+              <span class="value">?</span>
+              <span class="unit">V</span>
+            </div>
+            <div class="metric number" data-metric="v.c.12v.current" data-prec="1">
+              <span class="label">DC-DC Output Current:</span>
+              <span class="value">?</span>
+              <span class="unit">A</span>
+            </div>
+            <div class="metric number" data-metric="v.c.12v.power" data-prec="1">
+              <span class="label">DC-DC Output Power:</span>
+              <span class="value">?</span>
+              <span class="unit">W</span>
+            </div>
+            <h4>Misc Status</h4>
+            <div class="metric number" data-metric="v.p.odometer" data-prec="0">
+              <span class="label">Odometer:</span>
+              <span class="value">?</span>
+              <span class="unit">km</span>
+            </div>
+            <div class="metric text" data-metric="xr4.v.e.gear.letter">
+              <span class="label">Gear:</span>
+              <span class="value">?</span>
+            </div>
+
+            <br class="clearfix"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  (function()
+  {
+  
+    /* Init indicators: */
+    $('#xr4mon-receiver').on('msg:metrics', function(e, update) {
+      $(this).find('.indicator').each(function() {
+        var $el = $(this), metric = $el.data("metric"), val = update[metric];
+        if (val == null)
+          return;
+        else if (val != 0)
+          $el.children().removeClass('label-default').addClass('label-danger');
+        else if (val == 0)
+          $el.children().removeClass('label-danger').addClass('label-default');
+      });
+    });
+  
+  })();
+  </script>
